@@ -361,7 +361,7 @@ def get_hydrophobicity_ALL(seq):
 #running for single protein:
 #1st-create a clean.pdb of the protein
 #TODO: GET pro name, run this program
-name = "2LZM"
+name = "Q59485"
 toolbox.cleanATOM(name+".pdb")
 #2nd-Run with gen_binary_off_list with single string name input
 gen_binary_off_list(name)
