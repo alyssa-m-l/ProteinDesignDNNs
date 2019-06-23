@@ -24,19 +24,27 @@ init()
 from pyrosetta import toolbox
 import matplotlib.ticker as mticks
 
+#order in Wang et al paper (grouped by similarity of amino acid characteristics)
 correct_order = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
+#Order in our program, alphabetically
 alphb_order = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
 beta = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
-					
+#For ease of interpretting the results, use these to reorder results by similar amino acids further down				
 
-def get_specific_position_from_Protein_File(PDB_name, position, a, b, c, booltrueifNoHydrData):
+
+
+#Open binary files for a single protein file generated from the getXandYData.py or getXandYDataWithMoreFeatures.py
+#input:  name of file, position to be retrieved for prediction, size parameters a/b/c (see below), and boolean switch (set to True if using  Hydrophobic data)
+#output: Input for that position in the protein ready to be fed into the network, true labels from the protein's original sequence
+def get_specific_position_from_Protein_File(PDB_name, position, a, b, c, booltrueifNoHydrData=False):
 	#replicated: a = 293, b = 8, c = 19
 	#BB/BBSeq: a =356, b = 11, c = 23 
 	x_batch = []
 	y_batch = []
-	if a == 293:
+	#X (input)
+	if a == 293: #replicated DNN
 		fx = np.fromfile( PDB_name + "binaryX", dtype = float, count = -1, sep="")
-	else:
+	else: #Modified DNNs
 		fx = np.fromfile( PDB_name + "hydrophobicAnd3ShellBinaryX", dtype = float, count = -1, sep="")
 	fxshape = fx.shape
 	fx = np.reshape(fx, (int(fxshape[0]/a), a)) #separated into rows 
@@ -44,7 +52,6 @@ def get_specific_position_from_Protein_File(PDB_name, position, a, b, c, booltru
 	fy = np.fromfile(PDB_name + "binaryY", dtype = float, count = -1, sep="")
 	fyshape = fy.shape
 	fy = np.reshape(fy, (int(fyshape[0]/20), 20))
-	#print (y)
 	print ("Correct pos: ", alphb_order[np.argmax(fy[position-1])])
 	#x's
 	x = np.copy(fx[position-1])
@@ -60,14 +67,14 @@ def get_specific_position_from_Protein_File(PDB_name, position, a, b, c, booltru
 	total_x = np.hstack((tr, neighbor_reshaped))
 	#add x and y to the batch
 	x_batch.append(total_x)
-	#y_batch.append(y)
-	#once a batch is done, yield it
-	#print (x_batch[0].shape)
 	return [np.array(x_batch),np.array(x_batch)]
 
 
+#Data generator, returns batches of data to be trained until file is done 
+#gets line by line data out for a single protein prediction for the replicated DNN
+#input:  Name of file to be accessed, batch_size to yield
+#output:  Batches of x and y data
 def generate_arrays_from_Protein_Files(PDB_name, batch_size):
-	#gets line by line data out for a single protein prediction for the replicated DNN
 	x_batch = []
 	y_batch = []
 	#For short data (293 datapoints per target residue)
@@ -107,12 +114,17 @@ def generate_arrays_from_Protein_Files(PDB_name, batch_size):
 				yield ([np.array(x_batch),np.array(x_batch)], np.array(y_batch))#, np.array(weights))
 				x_batch = []
 				y_batch = []
-		
+				
+				
+#Data generator, returns batches of data to be trained until file is done 
+#gets line by line data out for a single protein prediction for the Backbone DNN
+#input:  Name of file to be accessed, batch_size to yield
+#output:  Batches of x and y data		
 def generate_BB_arrays_from_Protein_Files(PDB_name, batch_size):
-	#gets line by line data out for a single protein prediction for the replicated DNN
+	#gets line by line data out for a single protein prediction for the BackboneDNN
 	x_batch = []
 	y_batch = []
-	#For short data (293 datapoints per target residue)
+	#356 datapoints per target residue
 	while 1:
 		#Load x and reshape
 		fx = np.fromfile(path + PDB_name + "hydrophobicAnd3ShellBinaryX", dtype = float, count = -1, sep="")
@@ -140,7 +152,9 @@ def generate_BB_arrays_from_Protein_Files(PDB_name, batch_size):
 					tr = np.vstack((tr, x[0:11:1])) #should repeat the original entries for the target residue for 15 rows
 				neighbor_residue_inputs = x[11:] #all of the inputs after the target residue inputs
 				neighbor_reshaped = np.reshape(neighbor_residue_inputs, (15,23))
+				#####################
 				neighbor_reshaped = np.delete(neighbor_reshaped, -4, 1) #remove hydrophobicity column
+				###################
 				total_x = np.hstack((tr, neighbor_reshaped))
 				#add x and y to the batch
 				x_batch.append(total_x)
@@ -150,12 +164,17 @@ def generate_BB_arrays_from_Protein_Files(PDB_name, batch_size):
 				yield ([np.array(x_batch),np.array(x_batch)], np.array(y_batch))#, np.array(weights))
 				x_batch = []
 				y_batch = []
-		
+				
+				
+#Data generator, returns batches of data to be trained until file is done 
+#gets line by line data out for a single protein prediction for the BackBoneSequence DNN
+#input:  Name of file to be accessed, batch_size to yield
+#output:  Batches of x and y data		
 def generate_BB_Seq_arrays_from_Protein_Files(PDB_name, batch_size):
-	#gets line by line data out for a single protein prediction for the replicated DNN
+	#gets line by line data out for a single protein prediction for the BackBoneSequence DNN
 	x_batch = []
 	y_batch = []
-	#For short data (293 datapoints per target residue)
+	#356 datapoints per target residue
 	while 1:
 		#Load x and reshape
 		fx = np.fromfile(path + PDB_name + "hydrophobicAnd3ShellBinaryX", dtype = float, count = -1, sep="")
@@ -193,6 +212,9 @@ def generate_BB_Seq_arrays_from_Protein_Files(PDB_name, batch_size):
 				x_batch = []
 				y_batch = []
 
+#Generator for batches of batch_size from multiple files for the Replicated DNN
+#input:  Batch_size to yield, filenames (in a list) to access
+#output:  Batches fp x and y data
 def generate_arrays_from_text_files(filenames, batch_size):
 	print ("Starting Text Generator with files: ", filenames)
 	#intialize return structures
@@ -230,7 +252,9 @@ def generate_arrays_from_text_files(filenames, batch_size):
 					batch_x = []
 					batch_y = []
 
-
+#Generator for batches of batch_size from multiple files for the BackBoneSequence DNN
+#input:  Batch_size to yield, filenames (in a list) to access
+#output:  Batches fp x and y data
 def generate_arrays_from_text_files_3shHydr(filenames, batch_size):
 #DOES BE
 	x_batch = []
@@ -272,7 +296,9 @@ def generate_arrays_from_text_files_3shHydr(filenames, batch_size):
 						x_batch = []
 						y_batch = []
 
-
+#Generator for batches of batch_size from multiple files for the Backbone DNN
+#input:  Batch_size to yield, filenames (in a list) to access
+#output:  Batches fp x and y data
 def generate_arrays_from_text_files_3shNoHydr(filenames, batch_size):
 #DOES BEFORE WHILE ONCE PER
 	x_batch = []
@@ -314,6 +340,12 @@ def generate_arrays_from_text_files_3shNoHydr(filenames, batch_size):
 						yield ([np.array(x_batch), np.array(x_batch)], np.array(y_batch))#, np.array(weights))
 						x_batch = []
 						y_batch = []
+
+
+
+#Loads the given model
+#input:  Model yaml file name, model h5 file name, name of the model if outputting image (need to uncomment plot_model line for that to happen)
+#output:  keras model
 def load_model(model_yaml_name, model_h5_name, graph_name):
 	nnSaveModel = Path(model_yaml_name)
 	if nnSaveModel.is_file():
@@ -332,36 +364,34 @@ def load_model(model_yaml_name, model_h5_name, graph_name):
 		#plot_model(model, graph_name)
 		return model
 	else:
-		print ("MASSIVE ERROR!")
+		print ("MASSIVE ERROR!  Failed to load model!")
 
 
+#Gets the indices for the top k elements to determine if the true labels is in the top k highest probability amino acids
+#input:  array to find the top k elements of, k 
+#output:  indices of k highest numbers
 def get_indices_for_top_k_elements(array,k):
 	#gets the indices for the top k elements in the array in largest to smallest order
 	empty = []
-	#print (array)
-	#array = array[0]
 	for i in range(1,k+1):
 		index = np.where(array == np.partition(array, -1*i)[-1*i])[0][0]
 		empty.append(index)
 	return empty
 
 
+#Carries out the top-k accuracy analysis for a model
+#Input:  Model to test, generator for the model, number of lines to use in the top-k analysis
+#output:  the top k-accuracy of the model for k's 1-10
 def top_k(model, gen, n_lines):
 	#top 1-10 accuracies
 	#i,j = np.unravel_index(a.argmax(), a.shape) #adapted for use from https://stackoverflow.com/questions/5469286/how-to-get-the-index-of-a-maximum-element-in-a-numpy-array-along-one-axis
 	top_ks = [0]*10
 	#going to be in order top1, top2, top3, etc. up to top10 accuracy
 	for i in range(0,n_lines):
-		#print (i+1, " of ", n_lines)
 		x_both, y = next(gen)
-		#print (y)
 		pred = model.predict(x_both, batch_size = 1, verbose = 0)
-		#print ("PRED SIZE: ", pred.size)
-		#print (pred)
 		top_10_indices = get_indices_for_top_k_elements(pred, 10) 
-		#print("TOP 10: ", top_10_indices)
 		y_true_index = np.where(1==y[0])#gets index of true label
-		#print(y_true_index)
 		for i in range(1,10 + 1):
 			#storing number correct out of total lines for top-k accuracy 1-10
 			if y_true_index in top_10_indices[:i]:
@@ -374,14 +404,12 @@ def top_k(model, gen, n_lines):
 correct_order = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
 alphb_order = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
 
-
+#Changes the order of model output from alphabetic to grouped by like amino acid properties
+#input of old_matrix to be reordered
 def reorder_columns(old_matrix):
 	#reorders numpy arrays from AA order output by network to AA order in Wang et al paper
-	#print ("old shape: ", old_matrix.shape)
 	if old_matrix.shape == (20,20):
 		blank = np.zeros(old_matrix.shape)
-		alphb_order = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
-		correct_order = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
 		#fix columns
 		for i in correct_order:
 			#get position in alphb order, move that array column into correct place of blank array
@@ -392,6 +420,7 @@ def reorder_columns(old_matrix):
 	else:
 		print ("ERROR IN REORDER COLUMNS:  Only takes 20x20 matrices and reorders the columns.  The shape given was: ", old_matrix.shape)
 
+#For use in reorder_columns
 def reorder_rows(old_matrix):
 	blank_2 = np.zeros((20,20))
 	#fix rows
@@ -401,14 +430,16 @@ def reorder_rows(old_matrix):
 		blank_2[correct_pos,:] = np.copy(old_matrix[a_pos,:])
 	return blank_2
 
-	
+#for use in reorder_columns	
 def reorder_columns_and_rows(old_matrix):
 	reordered_by_columns = reorder_columns(old_matrix)
 	complete_reorder = reorder_rows(reordered_by_columns)
 	return complete_reorder
 	
-	
 
+#Calculates precision and recall from a model confusion matrix
+#input: confusion matrix to calculate precision and recall for
+#output:  Recall and precision lists
 def get_precision_recall_graphs(cm):
 	recall = np.zeros((20))
 	precision = np.zeros((20))
@@ -421,11 +452,10 @@ def get_precision_recall_graphs(cm):
 		recall[i] = true_preds/sum_row_cm
 	return recall, precision
 
+#Reorder precision and recall output lists
 def reorder_prec_and_recall_lists(prec_old, recall_old):
 	#reorders prec and recall results to property/similarity AA order from Wang et al
 	#input of two (20,) numpy arrays
-	correct_order = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
-	alphb_order = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
 	blank_prec = np.zeros(20)
 	blank_recall = np.zeros(20)
 	for thing in correct_order:
@@ -435,12 +465,18 @@ def reorder_prec_and_recall_lists(prec_old, recall_old):
 		blank_recall[correct_pos] = recall_old[alphb_pos]
 	return blank_recall, blank_prec
 
+#scales confusion matrix to make a heatmap
+#input: confusion matrix to scale
+#output:  Scaled confusion matrix, ready to graph as heatmap
 def heatmap(cm):
 	all_els = np.sum(cm)
 	#print (all_els)
 	cm2 = cm/all_els #getting the heatmap vals from 0 to 1 scaled
 	return cm2
 
+#Better heatmap maker, instead of scaling by all inputs, scales by rows so that each row represents a distribution that sums to one
+#input: confusion matrix to be scaled
+#output:  Scsaled matrix
 def betterHeatmap(cm):
 	#make elements dividied by sum of the row instead
 	cm2 = np.zeros((20,20))
@@ -451,7 +487,9 @@ def betterHeatmap(cm):
 	return cm2
 	
 
-
+#Determines if the diagonal in one confusion matrix is larger than the diagonal in the other confusion matrix
+#(when using, only compare confusion matrices which were created with the same scaler
+#input:  both confusion matrices to compare
 def findBiggestDiagonals(cm1, cm2):
 	biggest = 0
 	winner = 'z'
@@ -459,9 +497,11 @@ def findBiggestDiagonals(cm1, cm2):
 		if abs(cm1[i][i] - cm2[i][i]) > biggest:
 			biggest = abs(cm1[i][i] - cm2[i][i])
 			winner = correct_order[i]
-	print ("winner is: ", winner)
-	print ("Diff is: ", biggest)
+	print ("Larger diagonal is: ", winner)
+	print ("Difference between the two diagonals is: ", biggest)
 
+
+#Creating graphics for assessing DNNs created
 def create_heatmaps_precision_and_recall():
 	#Trying to reorder graphics according to desired order
 	cm_bb_unshaped = np.fromfile("recreationDNNConfusionMatrixNumpyBinary", dtype = float, count = -1, sep ="")
@@ -538,11 +578,8 @@ def create_heatmaps_precision_and_recall():
 
 	#second heatmap
 
-	true_labels = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
-	pred_labels = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
 	fig, ax = plt.subplots()
 	im = ax.imshow(heatmap_bb_seq, cmap = "Greys")
-
 	ax.set_xticks(np.arange(20))
 	ax.set_yticks(np.arange(20))
 	ax.set_xticklabels(pred_labels)
@@ -556,8 +593,6 @@ def create_heatmaps_precision_and_recall():
 
 
 	#recreation heatmatp
-	true_labels = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
-	pred_labels = ['H', 'R', 'K', 'Q', 'E', 'D', 'N', 'S', 'T', 'A', 'V', 'I', 'L', 'M', 'F', 'Y', 'W', 'G', 'C', 'P']
 	fig, ax = plt.subplots()
 	im = ax.imshow(heatmap_recreation, cmap = "Greys")
 	ax.set_xticks(np.arange(20))
@@ -571,6 +606,9 @@ def create_heatmaps_precision_and_recall():
 	fig.tight_layout()
 	plt.show()
 
+
+
+#TODO 
 def create_topk():	
 	#opening DNNs
 	#replicated DNN
