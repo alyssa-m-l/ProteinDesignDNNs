@@ -608,7 +608,7 @@ def create_heatmaps_precision_and_recall():
 
 
 
-#TODO 
+
 def create_topk():	
 	#opening DNNs
 	#replicated DNN
