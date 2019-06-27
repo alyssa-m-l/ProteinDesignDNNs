@@ -30,7 +30,7 @@ TF_CPP_MIN_LOG_LEVEL=2
 #simplified generator functions - only using the best options found
 #weights: nonormed weights
 
-def generate_arrays_from_text_files(filenames, batch_size):
+ def generate_arrays_from_text_files(filenames, batch_size):
 	print ("Starting Text Generator with files: ", filenames)
 	#intialize return structures
 	batch_x = []

@@ -664,9 +664,17 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 	dummy_prec_data = np.zeros(20) #dummy list to reuse precision and recall reorder function
 	#reorder_prec_and_recall_lists(prec_old, recall_old)
 	pred_rep2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_rep)
-	print ("REPLICATED")
+	pred_bb2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb)
+	#top_15_pred_bb = get_indices_for_top_k_elements(pred_bb2, 20)
+	pred_bb_seq2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb_seq)
 	true_pos = correct_order.index(site_name[0])
-	mut_pos = correct_order.index(site_name[-1])
+	try:
+		mut_pos = correct_order.index(site_name[-1])
+	except:
+		mut_pos = -1
+	'''
+	print ("REPLICATED")
+
 	for i in range(0, len(pred_rep2)):
 		print ( pred_rep2[i])
 	print ("____________________________________________________")
@@ -680,12 +688,12 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 		else:
 			#print (i, " ", correct_order[top_15_pred[i]])
 			x=0
-	pred_bb2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb)
+	
 	print ("BAKCBONE")
 	for i in range(0, len(pred_rep2)):
 		print (pred_bb2[i])
 	print("____________________________________________________")
-	top_15_pred_bb = get_indices_for_top_k_elements(pred_bb2, 20)
+	
 	print ("top 15 in backbone: ")
 	for i in range(0,len(top_15_pred_bb)):
 		if top_15_pred_bb[i] == true_pos:
@@ -697,7 +705,7 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 			x=0
 		
 
-	pred_bb_seq2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb_seq)
+	
 	print ("BBSEQ")
 	for i in range(0, len(pred_rep2)):
 		print (pred_bb_seq2[i])
@@ -724,18 +732,18 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 	
 	
 	
-	'''
+	
 	
 	#get_indices_for_top_k_elements(array,k): (gives list of indices of top 10 preds, need to check if w.t. and mutant in there)
 	
-	
+	'''
 	#print ("Replicated: ")
 	#print (pred_rep)
 	#print ("BB DNN: ")
 	#print (pred_bb)
 	#print("BB SEQ DNN: ")
 	#print (pred_bb_seq)
-	rects1 = ax.bar(ind - width, pred_bb2, width, color='darkgrey') #bb
+	rects1 = ax.bar(ind - width, pred_bb2, width, color='red') #bb
 	rects2 = ax.bar(ind, pred_bb_seq2, width, color = 'black') # bb seq
 	rects3 = ax.bar(ind + width, pred_rep2, width, color = 'dimgrey') # rep
 	ax.set_ylabel('Amino Acid Probability at Position ' + site_name[1:len(site_name)-1])
@@ -745,8 +753,8 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 	ax.legend((rects1[0], rects2[0], rects3[0]), ('Backbone DNN', 'Backbone/Sequence DNN', 'Replicated DNN'))
 	#ax.legend((rects1[0], rects3[0]), ('Backbone DNN', 'Replicated DNN'))
 	#labelling true and mutant on graph
-
-	i = 0
+	
+	i = 0	
 	#print (rects2[0])
 	for i in range(0,20):
 		#labelling middle bar
@@ -763,7 +771,7 @@ def single_pos_graph(pred_rep, pred_bb, pred_bb_seq, site_name, pro_name):
 			plt.text(rect.get_x() + rect.get_width()/2.0, h, 'Exp', ha='center', va='bottom')
 		i = i + 1
 	plt.show()
-	'''
+	
 
 def single_protein_predictions(name, graph_name, sites_list, site_names):
 	#get_specific_position_from_Protein_File(PDB_name, position, a, b, c, booltrueifNoHydrData)
@@ -808,24 +816,26 @@ def makeMeltTempVsPred(pred_rep, pred_bb, pred_bb_seq):
 	pred_bb2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb)
 	pred_bb_seq2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb_seq)
 	ax.scatter(meltTemps, pred_rep2, c = 'dimgrey', label = 'Replicated DNN')
-	ax.scatter(meltTemps, pred_bb2, c = 'darkgrey', label = 'Backbone DNN')
+	ax.scatter(meltTemps, pred_bb2, c = 'red', label = 'Backbone DNN')
 	ax.scatter(meltTemps, pred_bb_seq2, c = 'black', label = 'Backbone/Sequence DNN')
 	ax.set_ylabel('Amino Acid Probability at Position 96')
-	ax.set_xlabel('Delta Melting Temperature (Celsius)')
+	ax.set_xlabel(r'$\Delta$' + ' Melting Temperature (Celsius)')
 	ax.set_title('T4 Lysozyme Melting Temperatures and Predictions')
+	ax.set_xlim([-16,1])
 	plt.legend(loc = 'upper left')
 	#labels adapted from https://stackoverflow.com/questions/14432557/matplotlib-scatter-plot-with-different-text-at-each-data-point
 	for i, label in enumerate(correct_order_labels):
-		ax.annotate(label, (meltTemps[i], pred_rep2[i]))
-		ax.annotate(label, (meltTemps[i], pred_bb2[i]))
-		ax.annotate(label, (meltTemps[i], pred_bb_seq2[i]))
+		if label == "R":
+			ax.annotate("True", (ddg[i]-0.45, pred_rep2[i]+.015))
+			ax.annotate("True", (ddg[i]-0.45, pred_bb2[i] +.015))
+			ax.annotate("True", (ddg[i]-0.45, pred_bb_seq2[i]+.015))
 	plt.show()
 	fig, ax = plt.subplots()
 	pred_rep2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_rep)
 	pred_bb2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb)
 	pred_bb_seq2, dummy = reorder_prec_and_recall_lists(dummy_prec_data, pred_bb_seq)
 	ax.scatter(ddg, pred_rep2, c = 'dimgrey', label = 'Replicated DNN')
-	ax.scatter(ddg, pred_bb2, c = 'darkgrey', label = 'Backbone DNN')
+	ax.scatter(ddg, pred_bb2, c = 'red', label = 'Backbone DNN')
 	ax.scatter(ddg, pred_bb_seq2, c = 'black', label = 'Backbone/Sequence DNN')
 	ax.set_ylabel('Amino Acid Probability at Position 96')
 	ax.set_xlabel(r'$\Delta \Delta$' + 'G (kcal/mol)')
@@ -833,9 +843,10 @@ def makeMeltTempVsPred(pred_rep, pred_bb, pred_bb_seq):
 	plt.legend(loc = 'upper left')
 	#labels adapted from https://stackoverflow.com/questions/14432557/matplotlib-scatter-plot-with-different-text-at-each-data-point
 	for i, label in enumerate(correct_order_labels):
-		ax.annotate(label, (ddg[i], pred_rep2[i]))
-		ax.annotate(label, (ddg[i], pred_bb2[i]))
-		ax.annotate(label, (ddg[i], pred_bb_seq2[i]))
+		if label == "R":
+			ax.annotate("True", (ddg[i]-0.2, pred_rep2[i]+.015))
+			ax.annotate("True", (ddg[i]-0.2, pred_bb2[i] +.015))
+			ax.annotate("True", (ddg[i]-0.2, pred_bb_seq2[i]+.015))
 	plt.show()
 	
 	
@@ -869,28 +880,29 @@ def makeActivityBarGraph():
 
 
 #name_pro = "2LZM"
-name_pro = 'Whitworth_refine_041'
-#name_pro = "Q59485"
+#name_pro = 'Whitworth_refine_041'
+name_pro = "Q59485"
 #run whits with Homology Model PEPX, Crystal Structure PEPX
 #graph_name = "T4 Lysozyme"
-graph_name = 'Crystal Structure PEPX'
-#list_sites = [684, 133]#, 8, 161,258,425]
-list_sites_updated = [685, 134]#, 9, 162,259,426]
-site_names = ['L684', 'F133']#, 'Y8', 'W161','Y258','W425']
-true_and_mut = ['L684H', 'F133W']#,'Y8H', 'W161Q', 'Y258T','W425G']
+graph_name = 'Homology Model PEPX'
+#graph_name = 'Crystal Structure PEPX'
+list_sites = [684, 133, 8, 161,258,425]
+#list_sites_updated = [685, 134, 9, 162,259,426]
+#site_names = ['L684', 'F133']#, 'Y8', 'W161','Y258','W425']
+true_and_mut = ['L684H', 'F133W','Y8H', 'W161Q', 'Y258T','W425G']
+single_protein_predictions(name_pro, graph_name, list_sites, true_and_mut)
+
+#print ("ON CRYS STRUC")
 #single_protein_predictions(name_pro, graph_name, list_sites_updated, true_and_mut)
 
-print ("ON CRYS STRUC")
-single_protein_predictions(name_pro, graph_name, list_sites_updated, true_and_mut)
-'''
-graph_name = "Homology Model PEPX"
-name_pro = "Q59485"
-list_sites = [96]
-list_sites_updated = [-1]
-site_names = ["R96"]
-true_and_mut = ["R96Z"]
-single_protein_predictions(name_pro, graph_name, list_sites, true_and_mut)
-'''
+#graph_name = "Homology Model PEPX"
+#name_pro = "Q59485"
+#list_sites = [96]
+#list_sites_updated = [-1]
+#site_names = ["R96"]
+#true_and_mut = ["R96Z"]
+#single_protein_predictions(name_pro, graph_name, list_sites, true_and_mut)
+
 
 '''
 #makeActivityBarGraph()
